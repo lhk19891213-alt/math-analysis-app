@@ -161,7 +161,7 @@ def solve_problem():
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-2.5-flash",
             generation_config={"temperature": 0.1, "max_output_tokens": 4096}
         )
         response = model.generate_content(f"{system_instruction}\n\n【待解题目如下】：\n{problem_text}")
