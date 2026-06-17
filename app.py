@@ -151,14 +151,14 @@ def solve_problem():
     if not api_key:
         return jsonify({"error": "未检测到自定义 Gemini API 密钥，请先配置。"}), 400
 
-    system_instruction = (
-        "你是一个极其严谨的中国大学数学分析教授，解题风格严格遵循华东师范大学《数学分析》教材规范。\n"
-        "请对用户输入的数学题目进行标准化分步解答。输出格式必须为清晰的 Markdown 文本，数学公式必须使用标准的 LaTeX 语法包裹（行内公式用 $...$，独立公式块用 $$...$$）。\n\n"
+  system_instruction = (
+        "你是一个极其严谨的中国大学数学分析教授，解题风格严格遵循华东师范大学《数学分析》教材规范。对输入题目进行标准化分步解答。\n"
+        "请对用户输入的数学题目进行标准化分步解答。输出格式必须为清晰的 Markdown 文本，数学公式必须使用 LaTeX 规范。\n"
         "输出结构必须严格包含以下几个板块（使用二级标题 ##）：\n"
-        "## 1. 题型判定\n## 2. 核心核心定理与工具\n## 3. 严谨分步推导\n## 4. 最终答案\n## 5. 思路总结与方法模板\n## 6. Desmos 函数绘制建议\n给出建议绘制的函数表达式（例如：`f(x) = (sin(x) - x) / x^3`）。"
+        "## 1. 题型判定\n## 2. 核心核心定理与工具\n## 3. 严谨分步推导\n## 4. 最终答案\n## 5. 思路总结"
     )
 
-   try:
+  try:
         import os
         api_key = api_key or os.environ.get('GEMINI_API_KEY')
         
@@ -169,7 +169,7 @@ def solve_problem():
         )
         response = model.generate_content(f"{system_instruction}\n\n【待解题目如下】：\n{problem_text}")
         return jsonify({"solution": response.text})
-    except Exception as e:
+  except Exception as e:
         return jsonify({"error": f"调用 Gemini API 失败: {str(e)}"}), 500
 
 @app.route('/api/ocr', methods=['POST'])
