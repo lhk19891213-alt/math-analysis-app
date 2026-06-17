@@ -143,25 +143,24 @@ def delete_history():
 @app.route('/api/solve', methods=['POST'])
 def solve_problem():
     import os
-    
-    data = request.json or {}
-    problem_text = data.get('problem')
-    # 优先使用前端传来的 api_key，如果没有则读取 Render 的环境变量
-    api_key = data.get('api_key') or os.environ.get('GEMINI_API_KEY')
-
-    if not problem_text:
-        return jsonify({"error": "题目内容不能为空"}), 400
-    if not api_key:
-        return jsonify({"error": "未检测到 Gemini API 密钥，请先配置。"}), 400
-
-    system_instruction = (
-        "你是一个极其严谨的中国大学数学分析教授，解题风格严格遵循华东师范大学《数学分析》教材规范。对输入题目进行标准化分步解答。"
-        "请对用户输入的数学题目进行标准化分步解答。输出格式必须为清晰的 Markdown 文本，数学公式必须使用标准的 LaTeX 格式包裹（行内公式用 $...$，独立公式用 $$...$$）。\n"
-        "输出结构必须严格包含以下几个板块（使用二级标题 ##）：\n"
-        "## 1. 题型判定\n## 2. 核心定理与工具\n## 3. 严谨分步推导\n## 4. 最终答案\n## 5. 思路总结\n"
-    )
-
     try:
+        data = request.json or {}
+        problem_text = data.get('problem')
+        # 优先使用前端传来的 api_key，如果没有则读取 Render 的环境变量
+        api_key = data.get('api_key') or os.environ.get('GEMINI_API_KEY')
+
+        if not problem_text:
+            return jsonify({"error": "题目内容不能为空"}), 400
+        if not api_key:
+            return jsonify({"error": "未检测到 Gemini API 密钥，请先配置。"}), 400
+
+        system_instruction = (
+            "你是一个极其严谨的中国大学数学分析教授，解题风格严格遵循华东师范大学《数学分析》教材规范。对输入题目进行标准化分步解答。"
+            "请对用户输入的数学题目进行标准化分步解答。输出格式必须为清晰的 Markdown 文本，数学公式必须使用标准的 LaTeX 格式包裹（行内公式用 $...$，独立公式用 $$...$$）。\n"
+            "输出结构必须严格包含以下几个板块（使用二级标题 ##）：\n"
+            "## 1. 题型判定\n## 2. 核心定理与工具\n## 3. 严谨分步推导\n## 4. 最终答案\n## 5. 思路总结\n"
+        )
+
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
@@ -177,7 +176,7 @@ def upload_ocr():
     import os
     from PIL import Image
     try:
-        # 严格匹配你前端传递的 'image' 字段
+        # 严格匹配前端传递的 'image' 字段
         if 'image' not in request.files:
             return jsonify({"error": "没有上传图片"}), 400
         file = request.files['image']
