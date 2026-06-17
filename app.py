@@ -159,11 +159,15 @@ def solve_problem():
     )
 
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            generation_config={"temperature": 0.1, "max_output_tokens": 4096}
-        )
+    # ✨ 新增下面两行：如果前端传来的 key 为空，就去自动读取 Render 后台配置的环境变量
+    import os
+    api_key = api_key or os.environ.get('GEMINI_API_KEY')
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",  # ✨ 顺便将模型升级为 2.5-flash，防止 1.5 停用报 404
+        generation_config={"temperature": 0.1, "max_output_tokens": 4069}
+    )
         response = model.generate_content(f"{system_instruction}\n\n【待解题目如下】：\n{problem_text}")
         return jsonify({"solution": response.text})
     except Exception as e:
