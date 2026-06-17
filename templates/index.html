@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学分析智能解题平台 (账户版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { academic: { 50: '#f8fafc', 800: '#1e293b', 900: '#0f172a' } } } } }
+    </script>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-academic-900 dark:text-slate-100 min-h-screen">
+
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-academic-800 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">MathAnalysis.AI</span>
+                <span class="text-xs bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 px-2 py-0.5 rounded font-medium">已启用安全账户层</span>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div id="userAuthArea" class="text-sm font-medium">
+                    </div>
+                <button id="themeToggle" class="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs">🌙 夜间</button>
+                <button id="configToggle" class="p-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg text-xs font-medium">⚙️ API 配置</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 space-y-6">
+            <div id="configPanel" class="hidden bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/50 p-4 rounded-xl">
+                <h3 class="font-bold text-yellow-800 dark:text-yellow-400 mb-2 text-sm">Gemini API 部署</h3>
+                <div class="flex gap-2">
+                    <input type="password" id="apiKeyInput" placeholder="输入您的 Gemini API Key" class="flex-1 p-2 text-xs border rounded bg-white dark:bg-slate-800">
+                    <button id="saveKeyBtn" class="bg-yellow-600 text-white px-4 py-2 rounded text-xs">保存</button>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-academic-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+                <textarea id="problemInput" rows="4" placeholder="请输入数学分析题目（支持标准 LaTeX）..." class="w-full p-4 border rounded-xl bg-slate-50 dark:bg-slate-900 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+                <div class="mt-2 p-3 bg-slate-100 dark:bg-slate-900/50 rounded-lg text-[11px] text-slate-400">
+                    实时预览：<div id="latexPreview" class="mt-1 min-h-[20px] text-slate-800 dark:text-slate-200"></div>
+                </div>
+                <div class="mt-4 flex justify-between items-center">
+                    <div class="flex gap-2">
+                        <label class="cursor-pointer bg-slate-100 dark:bg-slate-700 px-3 py-2 rounded-xl text-xs font-medium">
+                            📷 图片识别 <input type="file" id="ocrInput" accept="image/*" class="hidden">
+                        </label>
+                        <button id="randomPickBtn" class="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 px-3 py-2 rounded-xl text-xs font-medium">🎲 随机抽题</button>
+                    </div>
+                    <button id="solveBtn" class="bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-blue-700">🚀 智能解题</button>
+                </div>
+            </div>
+
+            <div id="solutionWrapper" class="hidden bg-white dark:bg-academic-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h2 class="text-base font-bold text-emerald-600">🎓 华东师大规范解答</h2>
+                    <div class="flex gap-2 text-xs">
+                        <button id="copyLatexBtn" class="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">复制 LaTeX</button>
+                        <button id="printBtn" class="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">🖨️ 打印</button>
+                    </div>
+                </div>
+                <div id="solutionContent" class="prose dark:prose-invert max-w-none text-sm space-y-3"></div>
+                <div class="border rounded-xl overflow-hidden mt-4">
+                    <div class="bg-slate-100 dark:bg-slate-700 px-4 py-1.5 text-[11px] font-bold">📊 Desmos 动态可视化图像</div>
+                    <div id="desmosCalculator" class="w-full h-64 bg-white"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-white dark:bg-academic-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-bold">⏳ 账户历史存档</h2>
+                    <button id="exportHistoryBtn" class="text-[11px] text-blue-500 hover:underline">导出.txt</button>
+                </div>
+                <div id="historyList" class="space-y-3 max-h-96 overflow-y-auto"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="authModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-academic-800 p-6 rounded-2xl w-full max-w-sm border shadow-xl mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-base font-bold">用户登录</h3>
+                <button onclick="toggleAuthModal(false)" class="text-slate-400 text-lg">&times;</button>
+            </div>
+            <div class="space-y-3">
+                <input type="text" id="authUsername" placeholder="请输入账号" class="w-full p-2.5 text-sm border rounded-xl bg-slate-50 dark:bg-slate-900">
+                <input type="password" id="authPassword" placeholder="请输入密码" class="w-full p-2.5 text-sm border rounded-xl bg-slate-50 dark:bg-slate-900">
+                <div class="flex justify-between items-center text-xs text-blue-500 py-1">
+                    <span id="switchAuthModeBtn" class="cursor-pointer hover:underline" onclick="switchAuthMode()">没有账号？立即注册</span>
+                </div>
+                <button id="authSubmitBtn" class="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition">建立安全连接</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
