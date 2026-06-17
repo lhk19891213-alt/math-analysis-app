@@ -142,26 +142,26 @@ def delete_history():
 
 @app.route('/api/solve', methods=['POST'])
 def solve_problem():
-    data = request.json
-    problem_text = data.get('problem')
-    api_key = data.get('api_key')
+    import os
     
+    data = request.json or {}
+    problem_text = data.get('problem')
+    # 优先使用前端传来的 api_key，如果没有则读取 Render 的环境变量
+    api_key = data.get('api_key') or os.environ.get('GEMINI_API_KEY')
+
     if not problem_text:
         return jsonify({"error": "题目内容不能为空"}), 400
     if not api_key:
-        return jsonify({"error": "未检测到自定义 Gemini API 密钥，请先配置。"}), 400
+        return jsonify({"error": "未检测到 Gemini API 密钥，请先配置。"}), 400
 
     system_instruction = (
-        "你是一个极其严谨的中国大学数学分析教授，解题风格严格遵循华东师范大学《数学分析》教材规范。对输入题目进行标准化分步解答。\n"
-        "请对用户输入的数学题目进行标准化分步解答。输出格式必须为清晰的 Markdown 文本，数学公式必须使用 LaTeX 规范。\n"
+        "你是一个极其严谨的中国大学数学分析教授，解题风格严格遵循华东师范大学《数学分析》教材规范。对输入题目进行标准化分步解答。"
+        "请对用户输入的数学题目进行标准化分步解答。输出格式必须为清晰的 Markdown 文本，数学公式必须使用标准的 LaTeX 格式包裹（行内公式用 $...$，独立公式用 $$...$$）。\n"
         "输出结构必须严格包含以下几个板块（使用二级标题 ##）：\n"
-        "## 1. 题型判定\n## 2. 核心核心定理与工具\n## 3. 严谨分步推导\n## 4. 最终答案\n## 5. 思路总结"
+        "## 1. 题型判定\n## 2. 核心定理与工具\n## 3. 严谨分步推导\n## 4. 最终答案\n## 5. 思路总结\n"
     )
-    
+
     try:
-        import os
-        api_key = api_key or os.environ.get('GEMINI_API_KEY')
-        
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
@@ -171,39 +171,31 @@ def solve_problem():
         return jsonify({"solution": response.text})
     except Exception as e:
         return jsonify({"error": f"调用 Gemini API 失败: {str(e)}"}), 500
+
 @app.route('/api/ocr', methods=['POST'])
 def upload_ocr():
-    import io
+    import os
+    from PIL import Image
     try:
-        # 1. 检查前端有没有把图片传过来
+        # 严格匹配你前端传递的 'image' 字段
         if 'image' not in request.files:
-            return jsonify({"error": "未检测到上传的图片"}), 400
-        
+            return jsonify({"error": "没有上传图片"}), 400
         file = request.files['image']
         if file.filename == '':
             return jsonify({"error": "未选择图片"}), 400
-        
-        # 2. 尝试从前端获取你配置的 API Key
-        # 优先从请求的表单或 Header 中读取
-        api_key = request.form.get('api_key') or request.headers.get('X-API-Key')
+
+        api_key = request.form.get('api_key') or os.environ.get('GEMINI_API_KEY')
         if not api_key:
-            return jsonify({"error": "未提供 API Key，请先在网页右上角配置"}), 400
-        
-        # 3. 读取图片并用 PIL 库打开（由于第5行已经导入过 PIL，这里直接用）
-        image_bytes = file.read()
-        image = Image.open(io.BytesIO(image_bytes))
-        
-        # 4. 让聪明的 Gemini 2.5 Flash 来帮你人眼识别
+            return jsonify({"error": "未检测到 Gemini API 密钥，请先在网页或后台配置。"}), 400
+
         genai.configure(api_key=api_key)
-        ocr_model = genai.GenerativeModel(model_name="gemini-2.5-flash")
+        img = Image.open(file.stream)
+
+        model = genai.GenerativeModel(model_name="gemini-2.5-flash")
+        prompt = "请精准识别出这张数学题目图片中的文字和 LaTeX 公式。请只返回识别后的题目纯文本内容，不要包含任何多余的寒暄、解释、Markdown标记或代码块包裹。"
         
-        prompt = "请精准识别这张图片中的数学题，并将其直接转化为标准的 LaTeX 文本返回。注意：不要包含任何多余的解释、Markdown 格式标记（如 ```latex）或正文，只返回纯粹的 LaTeX 公式或题目字符串。"
-        
-        response = ocr_model.generate_content([image, prompt])
-        
-        # 5. 把识别出来的真题目返回给网页输入框
+        response = model.generate_content([prompt, img])
         return jsonify({"text": response.text.strip()})
-        
     except Exception as e:
         return jsonify({"error": f"图片识别失败: {str(e)}"}), 500
 @app.route('/')
