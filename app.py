@@ -158,16 +158,15 @@ def solve_problem():
         "## 1. 题型判定\n## 2. 核心核心定理与工具\n## 3. 严谨分步推导\n## 4. 最终答案\n## 5. 思路总结与方法模板\n## 6. Desmos 函数绘制建议\n给出建议绘制的函数表达式（例如：`f(x) = (sin(x) - x) / x^3`）。"
     )
 
-    try:
-    # ✨ 新增下面两行：如果前端传来的 key 为空，就去自动读取 Render 后台配置的环境变量
-    import os
-    api_key = api_key or os.environ.get('GEMINI_API_KEY')
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",  # ✨ 顺便将模型升级为 2.5-flash，防止 1.5 停用报 404
-        generation_config={"temperature": 0.1, "max_output_tokens": 4069}
-    )
+   try:
+        import os
+        api_key = api_key or os.environ.get('GEMINI_API_KEY')
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            generation_config={"temperature": 0.1, "max_output_tokens": 4096}
+        )
         response = model.generate_content(f"{system_instruction}\n\n【待解题目如下】：\n{problem_text}")
         return jsonify({"solution": response.text})
     except Exception as e:
