@@ -241,7 +241,6 @@ function formatAndRenderSolution(markdownText) {
         MathJax.typesetPromise([contentElt]).catch(err => console.log(err));
     }
 }
-
 function parseAndDrawFunction(markdownText) {
     if (!desmosCalc) return;
 
