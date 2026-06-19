@@ -43,6 +43,19 @@
             </div>
 
             <div class="bg-white dark:bg-academic-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+                <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/50 pb-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        🎯 华东师大《数分》核心题库精选：
+                    </span>
+                    <select id="questionBankSelect" class="text-xs p-2 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-72">
+                        <option value="">✨ 点击选择一道经典难题快速注入 --</option>
+                        <option value="求极限：\lim_{x \to 0} \frac{\cos(\sin x) - \cos x}{x^4}">【极限】Taylor 展开压轴经典未定式</option>
+                        <option value="设 f(x) 在 [0,1] 上二阶可导，f(0)=f(1)=0，且 \min_{x\in[0,1]}f(x)=-1。证明：\max_{x\in[0,1]}f''(x) \ge 8">【微分】中值定理与二阶导数曲率估计证明题</option>
+                        <option value="计算定积分：\int_{0}^{\pi} \frac{x \sin x}{1 + \cos^2 x} dx">【积分】对称区间变换与三角有理式积分神题</option>
+                        <option value="判定级数 \sum_{n=1}^{\infty} (-1)^n \frac{\ln n}{n} 的绝对收敛与条件收敛性。">【级数】任意项级数交错审敛与 Dirichlet 判别</option>
+                    </select>
+                </div>
+
                 <textarea id="problemInput" rows="4" placeholder="请输入数学分析题目（支持标准 LaTeX）..." class="w-full p-4 border rounded-xl bg-slate-50 dark:bg-slate-900 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
                 <div class="mt-2 p-3 bg-slate-100 dark:bg-slate-900/50 rounded-lg text-[11px] text-slate-400">
                     实时预览：<div id="latexPreview" class="mt-1 min-h-[20px] text-slate-800 dark:text-slate-200"></div>
@@ -103,5 +116,21 @@
     </div>
 
     <script src="/static/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const bankSelect = document.getElementById('questionBankSelect');
+            const problemInput = document.getElementById('problemInput');
+            if (bankSelect && problemInput) {
+                bankSelect.addEventListener('change', function() {
+                    if (this.value) {
+                        problemInput.value = this.value;
+                        // 联动触发输入与变更事件，保障实时 LaTeX 预览模块能自动同步更新
+                        problemInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        problemInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
