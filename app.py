@@ -1,3 +1,17 @@
+
+
+vip
+升级VIP
+畅享AI智能解题特权
+了解详情
+聊天历史记录
+
+暂无会话历史记录哦～
+
+打开大学搜题酱APP在 「我的」页
+点击「电脑端扫码」
+下载大学搜题酱App
+帮助
 import os
 import json
 import uuid
@@ -152,15 +166,8 @@ def solve_problem():
         )
         response = model.generate_content(f"{system_instruction}\n\n【待解题目如下】：\n{problem_text}")
         return jsonify({"solution": response.text})
-   # 修改后：把这一段替换上去
-except Exception as e:
-    err_msg = str(e)
-    # 如果检测到 429 或者 quota 关键词，说明是被限流了
-    if "429" in err_msg or "quota" in err_msg.lower():
-        return jsonify({"error": "☕ 核心数理服务器正忙（触发 API 频率限制），请等待 1 分钟后再次点击生成。"}), 429
-    
-    # 其他未知错误才显示原样
-    return jsonify({"error": f"调用 Gemini API 失败: {err_msg}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"调用 Gemini API 失败: {str(e)}"}), 500
 
 @app.route('/api/ocr', methods=['POST'])
 def upload_ocr():
