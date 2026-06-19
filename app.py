@@ -42,7 +42,25 @@ def init_files():
 
 init_files()
 
-# --- 用户认证相关路由 (选项A核心) ---
+# --- 辅助函数：严格清洗前端传来的 API 密钥 ---
+def get_clean_api_key(frontend_key):
+    """
+    清洗前端传过来的垃圾字符串，如果属于无效密钥，强制返回 Render 环境变量
+    """
+    if not frontend_key:
+        return os.environ.get('GEMINI_API_KEY')
+    
+    # 转换为字符串并去掉两端空格
+    key_str = str(frontend_key).strip()
+    
+    # 如果前端传过来的是 "null"、"undefined" 字符串或空串，视为无效
+    if key_str.lower() in ['', 'null', 'undefined', 'none']:
+        return os.environ.get('GEMINI_API_KEY')
+    
+    return key_str
+
+
+# --- 用户认证相关路由 ---
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.json
@@ -100,7 +118,7 @@ def auth_status():
     return jsonify({"logged_in": False})
 
 
-# --- 题库与解题路由（支持账户物理隔离） ---
+# --- 题库与解题路由 ---
 @app.route('/api/bank', methods=['GET'])
 def get_bank():
     with open(BANK_FILE, 'r', encoding='utf-8') as f:
@@ -111,7 +129,6 @@ def get_history():
     user_id = session.get('user_id')
     with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
         history = json.load(f)
-    # 未登录看公共记录，已登录只看当前用户的私有记录
     if user_id:
         user_history = [r for r in history if r.get('user_id') == user_id]
         return jsonify(user_history)
@@ -120,7 +137,7 @@ def get_history():
 @app.route('/api/history', methods=['POST'])
 def save_history():
     record = request.json
-    record['user_id'] = session.get('user_id') # 绑定当前登录用户的ID
+    record['user_id'] = session.get('user_id')
     with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
         history = json.load(f)
     history.insert(0, record)
@@ -134,7 +151,6 @@ def delete_history():
     user_id = session.get('user_id')
     with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
         history = json.load(f)
-    # 只能删除属于自己的记录
     history = [r for r in history if not (r.get('id') == record_id and r.get('user_id') == user_id)]
     with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
         json.dump(history, f, ensure_ascii=False, indent=4)
@@ -142,12 +158,12 @@ def delete_history():
 
 @app.route('/api/solve', methods=['POST'])
 def solve_problem():
-    import os
     try:
         data = request.json or {}
         problem_text = data.get('problem')
-        # 优先使用前端传来的 api_key，如果没有则读取 Render 的环境变量
-        api_key = data.get('api_key') or os.environ.get('GEMINI_API_KEY')
+        
+        # 🛡️ 使用强力清洗函数：防止前端传递的空值/明文 null 覆盖系统密钥
+        api_key = get_clean_api_key(data.get('api_key'))
 
         if not problem_text:
             return jsonify({"error": "题目内容不能为空"}), 400
@@ -173,17 +189,16 @@ def solve_problem():
 
 @app.route('/api/ocr', methods=['POST'])
 def upload_ocr():
-    import os
-    from PIL import Image
     try:
-        # 严格匹配前端传递的 'image' 字段
         if 'image' not in request.files:
             return jsonify({"error": "没有上传图片"}), 400
         file = request.files['image']
         if file.filename == '':
             return jsonify({"error": "未选择图片"}), 400
 
-        api_key = request.form.get('api_key') or os.environ.get('GEMINI_API_KEY')
+        # 🛡️ 同样在这里进行强力清洗
+        api_key = get_clean_api_key(request.form.get('api_key'))
+        
         if not api_key:
             return jsonify({"error": "未检测到 Gemini API 密钥，请先在网页或后台配置。"}), 400
 
@@ -197,6 +212,7 @@ def upload_ocr():
         return jsonify({"text": response.text.strip()})
     except Exception as e:
         return jsonify({"error": f"图片识别失败: {str(e)}"}), 500
+
 @app.route('/')
 def index():
     return render_template('index.html')
