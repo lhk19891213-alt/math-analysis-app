@@ -7,9 +7,8 @@ import google.generativeai as genai
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24) # 用于加密 Session
+app.secret_key = os.urandom(24)
 
-# 文件存储路径配置
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 BANK_FILE = os.path.join(DATA_DIR, 'bank.json')
 HISTORY_FILE = os.path.join(DATA_DIR, 'history.json')
@@ -18,7 +17,6 @@ USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 os.makedirs(DATA_DIR, exist_ok=True)
 
 def init_files():
-    # 初始化题库
     if not os.path.exists(BANK_FILE):
         categories = ["limit", "derivative", "integral", "series"]
         bank_data = {cat: [{
@@ -26,66 +24,42 @@ def init_files():
             "title": f"经典{cat}例题 {i}",
             "content": f"求以下数学分析题目的解：\\lim_{{x \\to 0}} \\frac{{\\sin x - x}}{{x^3}}" if cat=="limit" else "\\int_{0}^{\\pi} \\sin^2 x \\, dx",
             "category": cat
-        } for i in range(1, 6)] for cat in categories} # 每类精简演示5道
+        } for i in range(1, 6)] for cat in categories}
         with open(BANK_FILE, 'w', encoding='utf-8') as f:
             json.dump(bank_data, f, ensure_ascii=False, indent=4)
-            
-    # 初始化历史记录
     if not os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
             json.dump([], f, ensure_ascii=False, indent=4)
-
-    # 初始化用户库
     if not os.path.exists(USERS_FILE):
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
             json.dump({}, f, ensure_ascii=False, indent=4)
 
 init_files()
 
-# --- 辅助函数：严格清洗前端传来的 API 密钥 ---
 def get_clean_api_key(frontend_key):
-    """
-    清洗前端传过来的垃圾字符串，如果属于无效密钥，强制返回 Render 环境变量
-    """
+    """清洗前端传来的无效密钥，强制转换为 Render 后台的环境变量"""
     if not frontend_key:
         return os.environ.get('GEMINI_API_KEY')
-    
-    # 转换为字符串并去掉两端空格
     key_str = str(frontend_key).strip()
-    
-    # 如果前端传过来的是 "null"、"undefined" 字符串或空串，视为无效
     if key_str.lower() in ['', 'null', 'undefined', 'none']:
         return os.environ.get('GEMINI_API_KEY')
-    
     return key_str
 
-
-# --- 用户认证相关路由 ---
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.json
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
-    
     if not username or not password:
         return jsonify({"error": "账号或密码不能为空"}), 400
-        
     with open(USERS_FILE, 'r', encoding='utf-8') as f:
         users = json.load(f)
-        
     if username in users:
         return jsonify({"error": "该用户名已被注册"}), 400
-        
-    # 创建新用户，密码加盐哈希
     user_id = str(uuid.uuid4())[:8]
-    users[username] = {
-        "id": user_id,
-        "password": generate_password_hash(password)
-    }
-    
+    users[username] = {"id": user_id, "password": generate_password_hash(password)}
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(users, f, ensure_ascii=False, indent=4)
-        
     return jsonify({"status": "success", "message": "注册成功"})
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -93,15 +67,11 @@ def login():
     data = request.json
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
-    
     with open(USERS_FILE, 'r', encoding='utf-8') as f:
         users = json.load(f)
-        
     user = users.get(username)
     if not user or not check_password_hash(user['password'], password):
         return jsonify({"error": "用户名或密码错误"}), 401
-        
-    # 写入 Session 状态
     session['user_id'] = user['id']
     session['username'] = username
     return jsonify({"status": "success", "username": username})
@@ -117,8 +87,6 @@ def auth_status():
         return jsonify({"logged_in": True, "username": session['username']})
     return jsonify({"logged_in": False})
 
-
-# --- 题库与解题路由 ---
 @app.route('/api/bank', methods=['GET'])
 def get_bank():
     with open(BANK_FILE, 'r', encoding='utf-8') as f:
@@ -130,8 +98,7 @@ def get_history():
     with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
         history = json.load(f)
     if user_id:
-        user_history = [r for r in history if r.get('user_id') == user_id]
-        return jsonify(user_history)
+        return jsonify([r for r in history if r.get('user_id') == user_id])
     return jsonify([r for r in history if not r.get('user_id')])
 
 @app.route('/api/history', methods=['POST'])
@@ -162,7 +129,7 @@ def solve_problem():
         data = request.json or {}
         problem_text = data.get('problem')
         
-        # 🛡️ 使用强力清洗函数：防止前端传递的空值/明文 null 覆盖系统密钥
+        # 🛡️ 完美的密钥清洗流
         api_key = get_clean_api_key(data.get('api_key'))
 
         if not problem_text:
@@ -196,15 +163,12 @@ def upload_ocr():
         if file.filename == '':
             return jsonify({"error": "未选择图片"}), 400
 
-        # 🛡️ 同样在这里进行强力清洗
         api_key = get_clean_api_key(request.form.get('api_key'))
-        
         if not api_key:
             return jsonify({"error": "未检测到 Gemini API 密钥，请先在网页或后台配置。"}), 400
 
         genai.configure(api_key=api_key)
         img = Image.open(file.stream)
-
         model = genai.GenerativeModel(model_name="gemini-2.5-flash")
         prompt = "请精准识别出这张数学题目图片中的文字和 LaTeX 公式。请只返回识别后的题目纯文本内容，不要包含任何多余的寒暄、解释、Markdown标记或代码块包裹。"
         
