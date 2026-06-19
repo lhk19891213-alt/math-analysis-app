@@ -217,74 +217,17 @@ async function deleteHistory(id) {
 
 function formatAndRenderSolution(markdownText) {
     const contentElt = document.getElementById("solutionContent");
-    
-    // 1. 🛡️ 核心防吞步骤：首先把文本中的 &、< 和 > 转义，防止浏览器误认为是 HTML 标签
-    let safeText = markdownText
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt bridge;"); // 注意：实际代码中请使用 "&gt;"，此处为防转义展示
-        
-    // 修正上面那行的小瑕疵，请确保复制下面这句标准的：
-    safeText = markdownText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        
-    // 2. 执行 Markdown 元素和公式格式化
-    let html = safeText
+    let html = markdownText
         .replace(/##\s+(.+)/g, '<h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-4 mb-1 border-l-4 border-indigo-500 pl-2">$1</h3>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-600 dark:text-indigo-400">$1</strong>')
+        .replace(/\*\*(.*?)\*\"/g, '<strong class="text-indigo-600 dark:text-indigo-400">$1</strong>')
         .replace(/【易错点提示】/g, '<span class="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 text-[10px] px-1.5 py-0.5 rounded font-bold">⚠️ 易错点</span>');
-    
     contentElt.innerHTML = html;
-    
-    // 3. 🧮 唤醒 MathJax 渲染
-    if (window.MathJax) {
-        MathJax.typesetPromise([contentElt]).catch(err => console.log(err));
-    }
+    if (window.MathJax) MathJax.typesetPromise([contentElt]).catch(err => console.log(err));
 }
-function parseAndDrawFunction(markdownText) {
-    if (!desmosCalc) return;
 
-    // 1. 🧹 每次出新题时，先清空上一次画的图，防止旧图残留
-    desmosCalc.setBlank();
-
-    // 2. 🔍 提取出所有被 $$ 或 $ 包裹的 LaTeX 公式
-    const formulaRegex = /\$\$([\s\S]*?)\$\$|\$([\s\S]*?)\$/g;
-    let match;
-    let targetExpression = null;
-
-    while ((match = formulaRegex.exec(markdownText)) !== null) {
-        let formula = (match[1] || match[2] || "").trim();
-        if (!formula) continue;
-
-        // 清理掉 LaTeX 常见的空格微调符号，方便 Desmos 识别
-        formula = formula.replace(/\\,/g, '').replace(/\\ /g, '').replace(/\\!/g, '');
-
-        // 3. 🎯 核心判定：寻找符合画图特征的公式
-        // 比如含有 y=, f(x)=，或者直接是含 x 的可解析表达式
-        if (formula.startsWith('y=') || formula.startsWith('f(x)=')) {
-            targetExpression = formula;
-            break; // 优先抓取显函数方程
-        } else if (formula.includes('x') && !formula.includes('\\lim') && !formula.includes('\\int') && formula.length < 30) {
-            // 如果没有 y=，但单纯是个含 x 的简短表达式（如 x^2 + 2x），帮它补上 y =
-            if (!formula.includes('=')) {
-                targetExpression = 'y=' + formula;
-            }
-        }
-    }
-
-    // 4. 🎨 如果抓到了函数，立刻在 Desmos 上绘制出来
-    if (targetExpression) {
-        try {
-            desmosCalc.setExpression({
-                id: 'ai_dynamic_function',
-                latex: targetExpression,
-                color: '#6366f1' // 使用跟你网页配套的靛蓝色
-            });
-            console.log("Desmos 成功动态绘制函数:", targetExpression);
-        } catch (e) {
-            console.log("Desmos 绘图解析失败:", e);
-        }
-    } else {
-        // 兜底方案：如果这道题实在是纯数字计算（没函数图形），就展示一个优雅的极坐标网格或留空
-        desmosCalc.setExpression({ id: 'origin', latex: '(0,0)', label: '原点', showLabel: true });
-    }
+function parseAndDrawFunction(text) {
+    try {
+        const match = text.match(/`f\(x\)\s*=\s*(.*?)`/);
+        if (match && match[1] && desmosCalc) desmosCalc.setExpression({ id: 'graph1', latex: match[1].trim() });
+    } catch(e) {}
 }
