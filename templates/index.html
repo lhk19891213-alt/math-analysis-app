@@ -65,7 +65,8 @@
                         <label class="cursor-pointer bg-slate-100 dark:bg-slate-700 px-3 py-2 rounded-xl text-xs font-medium">
                             📷 图片识别 <input type="file" id="ocrInput" accept="image/*" class="hidden">
                         </label>
-                        <button id="randomPickBtn" class="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 px-3 py-2 rounded-xl text-xs font-medium">🎲 随机抽题</button>
+                        <button id="randomPickBtn" class="hidden">🎲 随机抽题</button>
+                        <button id="aiDrawBtn" class="bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 px-3 py-2 rounded-xl text-xs font-bold hover:bg-purple-100 transition flex items-center gap-1">🔮 AI 盲盒出题</button>
                     </div>
                     <button id="solveBtn" class="bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-blue-700">🚀 智能解题</button>
                 </div>
@@ -116,18 +117,42 @@
     </div>
 
     <script src="/static/js/app.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const bankSelect = document.getElementById('questionBankSelect');
             const problemInput = document.getElementById('problemInput');
+            const solveBtn = document.getElementById('solveBtn');
+            const aiDrawBtn = document.getElementById('aiDrawBtn');
+
+            // 1. 固定题库选择联动
             if (bankSelect && problemInput) {
                 bankSelect.addEventListener('change', function() {
                     if (this.value) {
                         problemInput.value = this.value;
-                        // 联动触发输入与变更事件，保障实时 LaTeX 预览模块能自动同步更新
                         problemInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        problemInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
+                });
+            }
+
+            // 2. AI 盲盒自主出题联动（核心新功能）
+            if (aiDrawBtn && problemInput && solveBtn) {
+                aiDrawBtn.addEventListener('click', () => {
+                    const aiPrompts = [
+                        "【AI 盲盒挑战】请随机为你自己设计一道极具挑战性的《数学分析》「极限与连续性」难题。请先明确列出【题目】，随后给出详细的【华东师大规范解答】。",
+                        "【AI 盲盒挑战】请随机为你自己设计一道关于《数学分析》「导数应用或中值定理」的压轴证明题。请先明确列出【题目】，随后给出详细的【华东师大规范解答】。",
+                        "【AI 盲盒挑战】请随机为你自己设计一道《数学分析》「定积分、广义积分或含参变量积分」的计算难题。请先明确列出【题目】，随后给出详细的【华东师大规范解答】。",
+                        "【AI 盲盒挑战】请随机为你自己设计一道关于《数学分析》「无穷级数或幂级数展开」的魔鬼审敛判定题。请先明确列出【题目】，随后给出详细的【华东师大规范解答】。"
+                    ];
+                    // 随机抽取一个方向的 prompt 塞进输入框
+                    const randomPrompt = aiPrompts[Math.floor(Math.random() * aiPrompts.length)];
+                    problemInput.value = randomPrompt;
+                    problemInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    // 稍等 200 毫秒让前端响应，然后自动替用户点击“智能解题”
+                    setTimeout(() => {
+                        solveBtn.click();
+                    }, 200);
                 });
             }
         });
