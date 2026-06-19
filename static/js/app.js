@@ -217,12 +217,29 @@ async function deleteHistory(id) {
 
 function formatAndRenderSolution(markdownText) {
     const contentElt = document.getElementById("solutionContent");
-    let html = markdownText
+    
+    // 1. 🛡️ 核心防吞步骤：首先把文本中的 < 和 > 转义，防止浏览器误认为是 HTML 标签而把公式和后续文本卡死吞掉
+    let safeText = markdownText
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+        
+    // 2. 执行 Markdown 元素和公式格式化
+    let html = safeText
         .replace(/##\s+(.+)/g, '<h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-4 mb-1 border-l-4 border-indigo-500 pl-2">$1</h3>')
-        .replace(/\*\*(.*?)\*\"/g, '<strong class="text-indigo-600 dark:text-indigo-400">$1</strong>')
+        // ✅ 修正此处的经典笔误：将原来的 \*\" 改回标准的 \*\* 匹配
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-600 dark:text-indigo-400">$1</strong>')
         .replace(/【易错点提示】/g, '<span class="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 text-[10px] px-1.5 py-0.5 rounded font-bold">⚠️ 易错点</span>');
+    
     contentElt.innerHTML = html;
-    if (window.MathJax) MathJax.typesetPromise([contentElt]).catch(err => console.log(err));
+    
+    // 3. 💡 注入 Tailwind 类名确保段落换行正常显示，且绝不破坏 MathJax 数学公式
+    contentElt.classList.add("whitespace-pre-wrap");
+
+    // 4. 🧮 唤醒 MathJax 渲染标准华东师大印刷体公式
+    if (window.MathJax) {
+        MathJax.typesetPromise([contentElt]).catch(err => console.log(err));
+    }
 }
 
 function parseAndDrawFunction(text) {
